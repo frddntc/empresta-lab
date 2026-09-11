@@ -1,0 +1,42 @@
+﻿version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: empresta_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - DATABASE_DIR=/app/data
+    volumes:
+      - empresta_db_data:/app/data
+    networks:
+      - empresta_net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: empresta_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - empresta_net
+    restart: unless-stopped
+
+volumes:
+  empresta_db_data:
+    name: empresta_db_data
+
+networks:
+  empresta_net:
+    driver: bridge
