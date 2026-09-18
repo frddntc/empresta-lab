@@ -107,7 +107,7 @@ def admin_headers(client):
 @pytest.fixture()
 def cliente_headers(client):
     """Cria um cliente no banco in-memory e retorna headers com token Bearer de cliente."""
-    test_client, emprestimos_sessionmaker, _ = client
+    test_client, _, emprestimos_sessionmaker = client
     db = emprestimos_sessionmaker()
     try:
         db.add(

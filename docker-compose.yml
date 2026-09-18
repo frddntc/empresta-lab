@@ -1,6 +1,22 @@
-﻿version: "3.9"
-
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: empresta_db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-empresta}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-empresta_dev_password}
+      - POSTGRES_DB=${POSTGRES_DB:-empresta}
+    volumes:
+      - empresta_pg_data:/var/lib/postgresql/data
+    networks:
+      - empresta_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-empresta} -d ${POSTGRES_DB:-empresta}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./backend
@@ -10,12 +26,14 @@ services:
       - "8000:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
       - JWT_SECRET=${JWT_SECRET}
       - ADMIN_USER=${ADMIN_USER}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - DATABASE_DIR=/app/data
-    volumes:
-      - empresta_db_data:/app/data
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER:-empresta}:${POSTGRES_PASSWORD:-empresta_dev_password}@db:5432/${POSTGRES_DB:-empresta}
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - empresta_net
     restart: unless-stopped
@@ -34,8 +52,8 @@ services:
     restart: unless-stopped
 
 volumes:
-  empresta_db_data:
-    name: empresta_db_data
+  empresta_pg_data:
+    name: empresta_pg_data
 
 networks:
   empresta_net:

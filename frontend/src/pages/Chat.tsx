@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Send } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ClipboardList, Send } from 'lucide-react'
 import api from '../api/client'
-import { useAuth } from '../context/AuthContext'
 import { ChatMessageBubble } from '../components/ChatMessageBubble'
 import { TypingIndicator } from '../components/TypingIndicator'
 
@@ -16,7 +16,6 @@ const WELCOME_MESSAGE: Message = {
 }
 
 export const Chat: React.FC = () => {
-  const { logout } = useAuth()
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -68,14 +67,10 @@ export const Chat: React.FC = () => {
           <h2>Assistente Empresta Lab</h2>
           <p className="chat-subtitle">Consulte disponibilidade e solicite empréstimos de equipamentos.</p>
         </div>
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={logout}
-          aria-label="Sair da conta"
-        >
-          Sair
-        </button>
+        <Link to="/emprestimos" className="btn-ghost chat-acompanhar">
+          <ClipboardList size={18} />
+          Acompanhar empréstimos
+        </Link>
       </div>
 
       <div className="chat-messages" aria-live="polite">

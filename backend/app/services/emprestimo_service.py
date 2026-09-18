@@ -11,24 +11,25 @@ def registrar_emprestimo(
     estoque_db: Session,
     emprestimos_db: Session,
 ) -> Emprestimo:
-    # 1. Verificar disponibilidade no estoque
+    # 1. Verificar equipamento
     eq = estoque_db.query(Equipamento).filter_by(id=body.equipamento_id).first()
     if not eq:
         raise HTTPException(status_code=404, detail="Equipamento não encontrado.")
+
+    # 2. Validar cliente ANTES de tocar no estoque (evita subtrair e perder unidades
+    #    quando o cadastro não existe)
+    cliente = emprestimos_db.query(Cliente).filter_by(matricula=body.matricula).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado. Realize o cadastro primeiro.")
+
+    # 3. Verificar disponibilidade e subtrair do estoque
     if eq.quantidade < body.quantidade:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Estoque insuficiente. Disponível: {eq.quantidade}.",
         )
-
-    # 2. Subtrair do estoque
     eq.quantidade -= body.quantidade
     estoque_db.commit()
-
-    # 3. Obter ou criar cliente
-    cliente = emprestimos_db.query(Cliente).filter_by(matricula=body.matricula).first()
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado. Realize o cadastro primeiro.")
 
     # 4. Criar registro de empréstimo
     hoje = date.today()

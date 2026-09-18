@@ -1,8 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import api from '../api/client'
-import { useAuth } from '../context/AuthContext'
 
 interface Equipamento {
   id: number
@@ -25,7 +24,7 @@ export default function AdminEquipamentos() {
   const [categoria, setCategoria] = useState('')
   const [quantidade, setQuantidade] = useState<number>(1)
 
-  const { logout } = useAuth()
+  const navigate = useNavigate()
 
   const carregarEquipamentos = useCallback(async () => {
     try {
@@ -103,11 +102,9 @@ export default function AdminEquipamentos() {
       <header className="admin-header">
         <h2>Gestão de Estoque — Equipamentos</h2>
         <div className="admin-header-actions">
-          <Link to="/admin" className="btn-ghost">
-            Ver Empréstimos
-          </Link>
-          <button className="btn-ghost" onClick={logout} aria-label="Sair da conta">
-            Sair
+          <button className="btn-ghost" onClick={() => navigate('/admin')} aria-label="Voltar para Empréstimos Ativos">
+            <ArrowLeft size={15} />
+            Voltar
           </button>
         </div>
       </header>
@@ -132,7 +129,6 @@ export default function AdminEquipamentos() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Nome</th>
                 <th>Categoria</th>
                 <th>Descrição</th>
@@ -143,7 +139,6 @@ export default function AdminEquipamentos() {
             <tbody>
               {equipamentos.map((eq) => (
                 <tr key={eq.id}>
-                  <td>#{eq.id}</td>
                   <td>
                     <strong>{eq.nome}</strong>
                   </td>

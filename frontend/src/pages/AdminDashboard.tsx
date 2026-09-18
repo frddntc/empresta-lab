@@ -2,17 +2,25 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Boxes, Undo2 } from 'lucide-react'
 import api from '../api/client'
-import { useAuth } from '../context/AuthContext'
+
+interface ClienteInfo {
+  id: number
+  nome: string
+  email: string
+  telefone: string
+  matricula: string
+}
 
 interface Emprestimo {
   id: number
-  cliente_id: number
+  cliente_id: number | null
   equipamento_id: number
   nome_equipamento: string
   quantidade: number
   data_emprestimo: string
   prazo_devolucao: string
   devolvido: boolean
+  cliente: ClienteInfo | null
 }
 
 export default function AdminDashboard() {
@@ -21,7 +29,6 @@ export default function AdminDashboard() {
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [processandoId, setProcessandoId] = useState<number | null>(null)
-  const { logout } = useAuth()
 
   const carregarEmprestimos = useCallback(async () => {
     try {
@@ -70,9 +77,6 @@ export default function AdminDashboard() {
             <Boxes size={18} />
             Gerenciar Estoque
           </Link>
-          <button className="btn-ghost" onClick={logout} aria-label="Sair da conta">
-            Sair
-          </button>
         </div>
       </header>
 
@@ -96,7 +100,7 @@ export default function AdminDashboard() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>Cliente</th>
                 <th>Equipamento</th>
                 <th>Qtd</th>
                 <th>Data Empréstimo</th>
@@ -110,7 +114,18 @@ export default function AdminDashboard() {
                 const vencido = isVencido(emp.prazo_devolucao)
                 return (
                   <tr key={emp.id}>
-                    <td>#{emp.id}</td>
+                    <td className="cell-cliente">
+                      {emp.cliente ? (
+                        <>
+                          <strong>{emp.cliente.nome}</strong>
+                          <small className="cliente-detalhes">
+                            {emp.cliente.matricula} · {emp.cliente.email} · {emp.cliente.telefone}
+                          </small>
+                        </>
+                      ) : (
+                        <small className="cliente-detalhes">Cliente removido da base</small>
+                      )}
+                    </td>
                     <td>
                       <strong>{emp.nome_equipamento}</strong>
                     </td>

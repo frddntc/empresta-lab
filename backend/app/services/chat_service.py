@@ -2,7 +2,7 @@
 from google import genai
 from google.genai import types
 from sqlalchemy.orm import Session
-from app.core.config import GEMINI_API_KEY
+from app.core.config import GEMINI_API_KEY, GEMINI_MODEL
 from app.models.estoque import Equipamento
 from app.models.emprestimos import Cliente
 from app.services.emprestimo_service import registrar_emprestimo
@@ -17,12 +17,17 @@ Fluxo obrigatório que você deve seguir:
 2. Se a ferramenta indicar que o equipamento não está disponível ou a quantidade solicitada for maior que o estoque, peça desculpas educadamente pela falta do equipamento e informe a quantidade disponível (se houver).
 3. Se houver disponibilidade suficiente, informe ao cliente e pergunte claramente se ele deseja prosseguir com o empréstimo.
 4. Se o cliente responder negativamente ou não quiser continuar, agradeça cordialmente o contato e encerre o atendimento.
-5. Se o cliente confirmar que deseja prosseguir, solicite os seguintes dados: nome completo, e-mail, telefone e matrícula/RA.
-6. Assim que o cliente fornecer todos os dados, chame a ferramenta `registrar_emprestimo`.
-7. Após o registro bem-sucedido, confirme o empréstimo ao cliente, informando o prazo de devolução de 30 dias.
+5. Se o cliente confirmar que deseja prosseguir, solicite a matrícula/RA dele.
+6. Com a matrícula em mãos, chame a ferramenta `verificar_cliente`:
+   - Se ela indicar que o cliente JÁ é cadastrado, NÃO peça nome, e-mail nem telefone novamente: use os dados retornados pela ferramenta e apenas confirme com o cliente se seguem válidos.
+   - Se ela indicar que o cliente NÃO é cadastrado, solicite nome completo, e-mail e telefone.
+7. Assim que tiver todos os dados, chame a ferramenta `registrar_emprestimo`.
+8. Após o registro bem-sucedido, confirme o empréstimo ao cliente, informando o prazo de devolução de 30 dias.
 
 Regras fundamentais:
 - NUNCA afirme que há equipamento disponível sem antes chamar `verificar_disponibilidade`.
+- NUNCA solicite os dados cadastrais de um cliente antes de chamar `verificar_cliente` com a matrícula informada — clientes recorrentes não devem repetir os dados a cada atendimento.
+- Se o `registrar_emprestimo` falhar com "Cliente não encontrado", oriente o cliente a criar a conta pelo próprio site (página de cadastro, botão "cadastre-se"), usando a mesma matrícula informada, e diga que poderá repetir o pedido logo após o cadastro. NUNCA invente procedimentos que não existem.
 - Não trate de temas alheios ao controle e empréstimo de ferramentas do laboratório.
 """
 
@@ -45,6 +50,20 @@ tools_declarations = [
                         ),
                     },
                     required=["nome_equipamento", "quantidade"],
+                ),
+            ),
+            types.FunctionDeclaration(
+                name="verificar_cliente",
+                description="Verifica se já existe cliente cadastrado com a matrícula informada e retorna os dados do cadastro (nome, e-mail, telefone), evitando solicitá-los novamente em atendimentos futuros.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "matricula": types.Schema(
+                            type="STRING",
+                            description="Matrícula ou RA informada pelo cliente."
+                        ),
+                    },
+                    required=["matricula"],
                 ),
             ),
             types.FunctionDeclaration(
@@ -90,13 +109,25 @@ tools_declarations = [
 ]
 
 
+def _normalizar(texto: str) -> str:
+    """minúsculas + sem acentos, para busca tolerante ('multimetro' acha 'Multímetro')."""
+    import unicodedata
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto.lower())
+        if unicodedata.category(c) != "Mn"
+    )
+
+
 def _executar_verificar_disponibilidade(args: dict[str, Any], estoque_db: Session) -> dict[str, Any]:
-    nome = str(args.get("nome_equipamento", "")).strip().lower()
+    nome = _normalizar(str(args.get("nome_equipamento", "")).strip())
     quantidade = int(args.get("quantidade", 1))
 
-    equipamento = estoque_db.query(Equipamento).filter(
-        Equipamento.nome.ilike(f"%{nome}%")
-    ).first()
+    # Busca em Python normalizando acentos: ILIKE não trata 'multimetro' = 'Multímetro'.
+    equipamento = next(
+        (eq for eq in estoque_db.query(Equipamento).all()
+         if nome in _normalizar(eq.nome) or _normalizar(eq.nome) in nome),
+        None,
+    )
 
     if not equipamento:
         return {
@@ -114,6 +145,26 @@ def _executar_verificar_disponibilidade(args: dict[str, Any], estoque_db: Sessio
         "quantidade_disponivel": equipamento.quantidade,
         "disponivel": disponivel,
         "mensagem": "Equipamento disponível." if disponivel else "Quantidade em estoque insuficiente.",
+    }
+
+
+def _executar_verificar_cliente(args: dict[str, Any], emprestimos_db: Session) -> dict[str, Any]:
+    """Consulta a base de clientes pela matrícula; clientes recorrentes não
+    precisam informar os dados cadastrais novamente."""
+    matricula = str(args.get("matricula", "")).strip()
+    cliente = emprestimos_db.query(Cliente).filter_by(matricula=matricula).first()
+    if not cliente:
+        return {
+            "cadastrado": False,
+            "mensagem": "Cliente não encontrado na base. Solicite nome completo, e-mail e telefone para o cadastro.",
+        }
+    return {
+        "cadastrado": True,
+        "nome": cliente.nome,
+        "email": cliente.email,
+        "telefone": cliente.telefone,
+        "matricula": cliente.matricula,
+        "mensagem": "Cliente já cadastrado. Use estes dados no registro do empréstimo e não os solicite novamente.",
     }
 
 
@@ -176,7 +227,7 @@ def processar_chat(
 
     while True:
         response = client.models.generate_content(
-            model="gemini-2.0-flash-lite",
+            model=GEMINI_MODEL,
             contents=contents,
             config=config,
         )
@@ -195,6 +246,8 @@ def processar_chat(
             args = dict(fc.args) if fc.args else {}
             if fc.name == "verificar_disponibilidade":
                 resultado = _executar_verificar_disponibilidade(args, estoque_db)
+            elif fc.name == "verificar_cliente":
+                resultado = _executar_verificar_cliente(args, emprestimos_db)
             elif fc.name == "registrar_emprestimo":
                 resultado = _executar_registrar_emprestimo(args, estoque_db, emprestimos_db)
             else:

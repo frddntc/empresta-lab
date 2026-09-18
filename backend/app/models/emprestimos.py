@@ -23,7 +23,13 @@ class Emprestimo(EmprestimosBase):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    cliente_id: Mapped[int] = mapped_column(Integer, ForeignKey("clientes.id"), nullable=False)
+    # Nullable + ON DELETE SET NULL: quando o cliente é removido da base (regra
+    # de negócio pós-devolução), os empréstimos devolvidos permanecem como
+    # histórico com cliente_id NULL (imposto pelo PostgreSQL; no SQLite local
+    # a FK não é imposta e o id fica órfão, mesmo efeito prático).
+    cliente_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True
+    )
     equipamento_id: Mapped[int] = mapped_column(Integer, nullable=False)
     nome_equipamento: Mapped[str] = mapped_column(String(150), nullable=False)
     quantidade: Mapped[int] = mapped_column(Integer, nullable=False)

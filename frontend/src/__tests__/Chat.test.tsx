@@ -71,3 +71,17 @@ describe('Tela de Chat do Cliente', () => {
     })
   })
 })
+
+describe('Chat — navegação para acompanhar empréstimos', () => {
+  beforeEach(() => {
+    vi.mocked(api.post).mockReset()
+    localStorage.clear()
+  })
+
+  it('exibe botão para acompanhar empréstimos ativos apontando para /emprestimos', () => {
+    renderChat()
+
+    const botao = screen.getByRole('link', { name: /acompanhar empréstimos/i })
+    expect(botao).toHaveAttribute('href', '/emprestimos')
+  })
+})
