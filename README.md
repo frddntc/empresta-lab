@@ -145,6 +145,7 @@ cd frontend && npm test
 ## Documentação
 
 - **[setup.md](setup.md)** — instalação passo a passo, variáveis de ambiente, troubleshooting e operação do dia a dia.
+- **[docs/](docs/index.md)** — documentação técnica: [Arquitetura](docs/arquitetura.md), [API](docs/api.md), [Modelo de dados](docs/modelo-de-dados.md), [Frontend](docs/frontend.md) e [Testes](docs/testes.md).
 - **[prompts/](prompts/)** — a especificação incremental do projeto, mantida como **fonte única da verdade** da implementação vigente: cada prompt descreve objetivo, escopo, restrições, arquivos, código de referência e critérios de aceite da funcionalidade na sua versão final (não é um histórico de mudanças).
 
 ---

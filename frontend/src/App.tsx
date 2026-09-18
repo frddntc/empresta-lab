@@ -32,7 +32,6 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginCliente />} />
             <Route path="/register" element={<RegisterCliente />} />
-            <Route path="/register" element={<RegisterCliente />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/chat" element={<Chat />} />
             </Route>

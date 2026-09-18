@@ -23,7 +23,7 @@ class ClienteInfo(BaseModel):
 
 class EmprestimoResponse(BaseModel):
     id: int
-    cliente_id: int | None   # NULL quando o cliente foi removido (ON DELETE SET NULL)
+    cliente_id: int | None   # NULL só se o cliente for removido (ON DELETE SET NULL defensivo)
     equipamento_id: int
     nome_equipamento: str
     quantidade: int
@@ -31,8 +31,8 @@ class EmprestimoResponse(BaseModel):
     prazo_devolucao: date
     devolvido: bool
     data_devolucao: date | None
-    # Após a devolução o cliente é removido da base (regra de negócio),
-    # então o objeto pode vir None na resposta de `PUT /{id}/devolver`.
+    # O cadastro do cliente é permanente (regra vigente); o campo é opcional
+    # por defensividade (cliente removido manualmente no banco).
     cliente: ClienteInfo | None
 
     model_config = {"from_attributes": True}
